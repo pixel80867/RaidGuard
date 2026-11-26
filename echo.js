@@ -9,6 +9,14 @@ function registerEcho(client) {
         if (!message.guild || message.author.bot) return;
         if (message.guild.id !== config.guildId) return;
         if (!message.content.startsWith("!echo ")) return;
+        console.log("[ECHO] Command detected");
+console.log("[ECHO] Staff role configured:", config.staffRoleId);
+console.log("[ECHO] Highest role:", message.member?.roles.highest.name);
+console.log("[ECHO] Mention permission:",
+    message.member?.permissionsIn(message.channel)
+        .has(PermissionFlagsBits.MentionEveryone)
+);
+
 
         const staffRole = message.guild.roles.cache.get(
             config.staffRoleId
