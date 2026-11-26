@@ -9,6 +9,7 @@ const {
 
 const config = require("./config");
 const { registerProtection } = require("./protection");
+const { registerEcho } = require("./echo");
 const { securityLog } = require("./logger");
 
 const required = [
@@ -40,6 +41,7 @@ const client = new Client({
 });
 
 registerProtection(client);
+registerEcho(client);
 
 client.once(Events.ClientReady, async bot => {
     console.log("============================");
