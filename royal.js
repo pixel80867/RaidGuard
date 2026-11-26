@@ -146,11 +146,38 @@ function registerRoyal(client) {
                     );
                 }
 
-                await message.reply({
-                    content:
-                        `Channels updated: ${completed}\nFailed: ${failed}`,
-                    allowedMentions: { parse: [] }
-                }).catch(console.error);
+                const lockedEmoji = "<:locked:1575609857858609192>";
+const unlockedEmoji = "<:unlocked:575609944303079434>";
+
+const locking = content === "!protect";
+
+const embed = new EmbedBuilder()
+    .setDescription(
+        locking
+            ? `${lockedEmoji} **Royal Protection Activated**`
+            : `${unlockedEmoji} **Royal Protection Deactivated**`
+    )
+    .addFields(
+        {
+            name: "Successful",
+            value: `${completed}`,
+            inline: true
+        },
+        {
+            name: "Failed",
+            value: `${failed}`,
+            inline: true
+        }
+    )
+    .setColor(locking ? 0xFF0000 : 0x00FF00)
+    .setFooter({ text: "Royal Protection System" })
+    .setTimestamp();
+
+await message.reply({
+    embeds: [embed],
+    allowedMentions: { parse: [] }
+}).catch(console.error);
+
 
             } catch (error) {
                 console.error("Royal protection:", error.message);
