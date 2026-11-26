@@ -152,4 +152,31 @@ function registerInteractions(client) {
     console.log("Slash command handler loaded.");
 }
 
-module.exports = { registerInteractions };
+function setRaidMode(guildId, enabled) {
+    if (enabled) {
+        raids.set(
+            guildId,
+            Date.now() + config.antiRaid.raidDuration
+        );
+    } else {
+        raids.delete(guildId);
+    }
+
+    return enabled;
+}
+
+function getRaidStatus(guildId) {
+    const expiry = raids.get(guildId) || 0;
+
+    return {
+        active: expiry > Date.now(),
+        remaining: Math.max(0, expiry - Date.now())
+    };
+}
+
+module.exports = {
+    registerProtection,
+    setRaidMode,
+    getRaidStatus
+};
+
