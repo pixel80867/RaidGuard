@@ -145,6 +145,7 @@ function registerRoyal(client) {
 
                             if (!channel) {
                                 saved.delete(id);
+                                persistPermissions();
                                 continue;
                             }
 
