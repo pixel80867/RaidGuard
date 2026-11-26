@@ -7,6 +7,10 @@ const {
 
 const config = require("./config");
 const { securityLog } = require("./logger");
+const {
+    setRaidMode,
+    getRaidStatus
+} = require("./protection");
 
 function isStaff(member) {
     if (!member) return false;
@@ -32,9 +36,10 @@ function registerInteractions(client) {
                 flags: MessageFlags.Ephemeral
             });
 
-            const member = await interaction.guild.members.fetch(
-                interaction.user.id
-            );
+            const member = await interaction.guild.members.fetch({
+                user: interaction.user.id,
+                force: true
+            });
 
             if (!isStaff(member)) {
                 return interaction.editReply(
@@ -52,6 +57,14 @@ function registerInteractions(client) {
                     const enabled =
                         interaction.options.getBoolean("enabled");
 
+                    // Only the server owner can disable protection.
+                    if (!enabled &&
+                        member.id !== interaction.guild.ownerId) {
+                        return interaction.editReply(
+                            "Only the server owner can disable protection."
+                        );
+                    }
+
                     if (command === "antiraid") {
                         config.antiRaid.enabled = enabled;
                     } else {
@@ -61,23 +74,68 @@ function registerInteractions(client) {
                     response = `${command}: ${
                         enabled ? "Enabled" : "Disabled"
                     }`;
+
                     break;
                 }
 
-                case "raidmode":
+                case "raidmode": {
+                    const enabled =
+                        interaction.options.getBoolean("enabled");
+
+                    if (!enabled &&
+                        member.id !== interaction.guild.ownerId) {
+                        return interaction.editReply(
+                            "Only the server owner can deactivate raid mode."
+                        );
+                    }
+
+                    setRaidMode(interaction.guildId, enabled);
+
+                    response = enabled
+                        ? "🚨 Emergency monitoring activated."
+                        : "✅ Emergency monitoring deactivated.";
+
+                    break;
+                }
+
                 case "emergency":
-                case "panic":
-                case "raidstatus":
-                    return interaction.editReply(
-                        "This command requires the upcoming raid state integration."
+                case "panic": {
+                    config.antiRaid.enabled = true;
+                    setRaidMode(interaction.guildId, true);
+
+                    await securityLog(
+                        interaction.guild,
+                        "EMERGENCY RAID ALERT",
+                        `Activated by staff ID: ${interaction.user.id}`,
+                        "danger"
                     );
+
+                    response = "🚨 Emergency monitoring activated.";
+                    break;
+                }
+
+                case "raidstatus": {
+                    const status = getRaidStatus(
+                        interaction.guildId
+                    );
+
+                    response = status.active
+                        ? `🚨 Raid Mode: ACTIVE\nRemaining: ${
+                            Math.ceil(status.remaining / 1000)
+                        } seconds`
+                        : "🟢 Raid Mode: INACTIVE";
+
+                    break;
+                }
 
                 case "security":
                     response =
                         `Anti-Raid: ${config.antiRaid.enabled ? "ON" : "OFF"}\n` +
                         `Anti-Nuke: ${config.antiNuke.enabled ? "ON" : "OFF"}\n` +
                         `Anti-Spam: ${config.antiSpam.enabled ? "ON" : "OFF"}\n` +
-                        `Anti-Mention: ${config.antiMention.enabled ? "ON" : "OFF"}`;
+                        `Anti-Mention: ${config.antiMention.enabled ? "ON" : "OFF"}\n` +
+                        `Raid Mode: ${getRaidStatus(interaction.guildId).active ? "ACTIVE" : "INACTIVE"}`;
+
                     break;
 
                 case "securitycheck": {
@@ -117,7 +175,9 @@ function registerInteractions(client) {
                 }
 
                 default:
-                    return interaction.editReply("Unknown command.");
+                    return interaction.editReply(
+                        "Unknown command."
+                    );
             }
 
             const embed = new EmbedBuilder()
@@ -143,7 +203,7 @@ function registerInteractions(client) {
 
             if (interaction.deferred || interaction.replied) {
                 await interaction.editReply(
-                    "An error occurred."
+                    "An error occurred. Check Railway logs."
                 ).catch(console.error);
             }
         }
@@ -152,53 +212,4 @@ function registerInteractions(client) {
     console.log("Slash command handler loaded.");
 }
 
-function setRaidMode(guildId, enabled) {
-    if (enabled) {
-        raids.set(
-            guildId,
-            Date.now() + config.antiRaid.raidDuration
-        );
-    } else {
-        raids.delete(guildId);
-    }
-
-    return enabled;
-}
-
-function getRaidStatus(guildId) {
-    const expiry = raids.get(guildId) || 0;
-
-    return {
-        active: expiry > Date.now(),
-        remaining: Math.max(0, expiry - Date.now())
-    };
-}
-
-function setRaidMode(guildId, enabled) {
-    if (enabled) {
-        raids.set(
-            guildId,
-            Date.now() + config.antiRaid.raidDuration
-        );
-    } else {
-        raids.delete(guildId);
-    }
-
-    return enabled;
-}
-
-function getRaidStatus(guildId) {
-    const expiry = raids.get(guildId) || 0;
-
-    return {
-        active: expiry > Date.now(),
-        remaining: Math.max(0, expiry - Date.now())
-    };
-}
-
-module.exports = {
-    registerProtection,
-    setRaidMode,
-    getRaidStatus
-};
-
+module.exports = { registerInteractions };
