@@ -22,6 +22,25 @@ function trusted(guild, id) {
         id === guild.client.user.id ||
         config.whitelist.includes(id);
 }
+function isStaff(member) {
+    if (!member) return false;
+
+    if (member.id === member.guild.ownerId) {
+        return true;
+    }
+
+    const staffRole = member.guild.roles.cache.get(
+        config.staffRoleId
+    );
+
+    if (!staffRole || staffRole.id === member.guild.id) {
+        return false;
+    }
+
+    return member.roles.highest.comparePositionTo(
+        staffRole
+    ) >= 0;
+}
 
 function registerProtection(client) {
 
