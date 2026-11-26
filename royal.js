@@ -111,14 +111,16 @@ function registerRoyal(client) {
                             ) ? false : null;
 
                         try {
-                            await channel.permissionOverwrites.edit(
-                                guild.roles.everyone,
-                                { SendMessages: false },
-                                { reason: "Royal emergency protection" }
-                            );
+    saved.set(channel.id, previous);
+    persistPermissions();
 
-                            saved.set(channel.id, previous);
-                            completed++;
+    await channel.permissionOverwrites.edit(
+        guild.roles.everyone,
+        { SendMessages: false },
+        { reason: "Royal emergency protection" }
+    );
+
+    completed++;
 
                         } catch (error) {
                             failed++;
