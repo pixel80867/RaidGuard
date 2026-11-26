@@ -1,6 +1,7 @@
 module.exports = {
     // Server settings
     guildId: process.env.GUILD_ID,
+    staffRoleId: process.env.STAFF_ROLE_ID,
     logChannelId: process.env.LOG_CHANNEL_ID,
     quarantineRoleId: process.env.QUARANTINE_ROLE_ID,
 
