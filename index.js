@@ -10,6 +10,7 @@ const {
 const config = require("./config");
 const { registerProtection } = require("./protection");
 const { registerEcho } = require("./echo");
+const { registerRoyal } = require("./royal");
 const { registerCommands } = require("./register");
 const { registerInteractions } = require("./interactions");
 const { securityLog } = require("./logger");
@@ -46,6 +47,7 @@ config.slashCommands = true;
 registerProtection(client);
 registerEcho(client);
 registerInteractions(client);
+registerRoyal(client);
 
 // BOT STARTUP
 client.once(Events.ClientReady, async bot => {
