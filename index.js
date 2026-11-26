@@ -62,6 +62,16 @@ client.once(Events.ClientReady, async bot => {
         console.error("Configured server not found.");
         return;
     }
+const staffRole = guild.roles.cache.get(
+    config.staffRoleId
+);
+
+if (!staffRole || staffRole.id === guild.id) {
+    console.error("Invalid STAFF_ROLE_ID.");
+} else {
+    console.log(`Minimum staff role: ${staffRole.name}`);
+    console.log("Staff and higher roles recognized.");
+}
 
     await securityLog(
         guild,
