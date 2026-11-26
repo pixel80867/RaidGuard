@@ -10,26 +10,26 @@ const {
 const config = require("./config");
 const { registerProtection } = require("./protection");
 const { registerEcho } = require("./echo");
+const { registerCommands } = require("./register");
+const { registerInteractions } = require("./interactions");
 const { securityLog } = require("./logger");
 
-const required = [
+// CHECK REQUIRED VARIABLES
+const requiredVariables = [
     "TOKEN",
     "GUILD_ID",
-    "LOG_CHANNEL_ID"
+    "LOG_CHANNEL_ID",
+    "STAFF_ROLE_ID"
 ];
 
-const missing = required.filter(
-    key => !process.env[key]
-);
-
-if (missing.length) {
-    console.error(
-        "Missing environment variables:",
-        missing.join(", ")
-    );
-    process.exit(1);
+for (const variable of requiredVariables) {
+    if (!process.env[variable]) {
+        console.error(`Missing variable: ${variable}`);
+        process.exit(1);
+    }
 }
 
+// CREATE DISCORD CLIENT
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -40,21 +40,26 @@ const client = new Client({
     ]
 });
 
+// ENABLE BOT SYSTEMS
+config.slashCommands = true;
+
 registerProtection(client);
 registerEcho(client);
+registerInteractions(client);
 
+// BOT STARTUP
 client.once(Events.ClientReady, async bot => {
-    console.log("============================");
-    console.log(`RaidGuard online: ${bot.user.tag}`);
-    console.log("Protection system activated.");
-    console.log("Slash commands disabled.");
-    console.log("============================");
+    console.log("==============================");
+    console.log(`RaidGuard online as ${bot.user.tag}`);
+    console.log("==============================");
 
     bot.user.setPresence({
-        activities: [{
-            name: "Server Security",
-            type: ActivityType.Watching
-        }],
+        activities: [
+            {
+                name: "Server Security",
+                type: ActivityType.Watching
+            }
+        ],
         status: "online"
     });
 
@@ -64,29 +69,42 @@ client.once(Events.ClientReady, async bot => {
         console.error("Configured server not found.");
         return;
     }
-const staffRole = guild.roles.cache.get(
-    config.staffRoleId
-);
 
-if (!staffRole || staffRole.id === guild.id) {
-    console.error("Invalid STAFF_ROLE_ID.");
-} else {
-    console.log(`Minimum staff role: ${staffRole.name}`);
-    console.log("Staff and higher roles recognized.");
-}
+    console.log(`Connected to: ${guild.name}`);
 
+    const staffRole = guild.roles.cache.get(
+        config.staffRoleId
+    );
+
+    if (!staffRole || staffRole.id === guild.id) {
+        console.error("Invalid STAFF_ROLE_ID.");
+    } else {
+        console.log(`Minimum staff role: ${staffRole.name}`);
+        console.log("Staff and higher roles recognized.");
+    }
+
+    // REGISTER SLASH COMMANDS
+    await registerCommands(bot);
+
+    // SEND STARTUP LOG
     await securityLog(
         guild,
         "RaidGuard Online",
-        "Automatic security monitoring is active.",
+        "Automatic security monitoring and staff commands are active.",
         "success"
     );
 });
 
+// ERROR HANDLING
 client.on(Events.Error, error => {
-    console.error("Discord client error:", error.message);
+    console.error("Discord client error:", error);
 });
 
+process.on("unhandledRejection", error => {
+    console.error("Unhandled rejection:", error);
+});
+
+// LOGIN
 client.login(process.env.TOKEN).catch(error => {
     console.error("Login failed:", error.message);
     process.exit(1);
