@@ -8,7 +8,30 @@ const {
 const config = require("./config");
 const { securityLog } = require("./logger");
 
-const lockedChannels = new Map();
+const {
+    loadLockdown,
+    saveLockdown
+} = require("./storage");
+
+const lockedChannels = new Map(
+    Object.entries(loadLockdown()).map(
+        ([guildId, channels]) => [
+            guildId,
+            new Map(Object.entries(channels))
+        ]
+    )
+);
+
+function persistPermissions() {
+    const data = Object.fromEntries(
+        Array.from(lockedChannels, ([id, channels]) => [
+            id,
+            Object.fromEntries(channels)
+        ])
+    );
+
+    saveLockdown(data);
+}
 const busy = new Set();
 
 function registerRoyal(client) {
