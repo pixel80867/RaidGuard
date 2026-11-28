@@ -10,13 +10,16 @@ const config = require("./config");
 const { securityLog } = require("./logger");
 const { loadLockdown, saveLockdown } = require("./storage");
 
-const authorizedIds = new Set(
-    (process.env.ROYAL_AUTHORIZED_IDS || "")
-        .split(",")
-        .map(id => id.trim())
-        .filter(Boolean)
-);
+// AUTHORIZED USERS
+const authorizedIds = new Set([
+    "1446939710181081168"
+]);
 
+// CUSTOM EMOJIS
+const lockedEmoji = "<:locked:1575609857858609192>";
+const unlockedEmoji = "<:unlocked:575609944303079434>";
+
+// SAVED CHANNEL PERMISSIONS
 const lockedChannels = new Map(
     Object.entries(loadLockdown() || {}).map(
         ([guildId, channels]) => [
@@ -29,14 +32,14 @@ const lockedChannels = new Map(
 const busy = new Set();
 
 function persistPermissions() {
-    saveLockdown(
-        Object.fromEntries(
-            Array.from(lockedChannels, ([id, channels]) => [
-                id,
-                Object.fromEntries(channels)
-            ])
-        )
+    const data = Object.fromEntries(
+        Array.from(lockedChannels, ([id, channels]) => [
+            id,
+            Object.fromEntries(channels)
+        ])
     );
+
+    saveLockdown(data);
 }
 
 function registerRoyal(client) {
@@ -52,17 +55,28 @@ function registerRoyal(client) {
         const reply = options =>
             message.reply(options).catch(console.error);
 
+        // EMERGENCY PROTECTION COMMANDS
         if (content === "!protect" || content === "!safe") {
-
-            // AUTHORIZED USER SYSTEM
 
             const isOwner =
                 message.author.id === guild.ownerId;
 
+            const isAdmin =
+                message.member?.permissions.has(
+                    PermissionFlagsBits.Administrator
+                );
+
             const isAuthorized =
                 authorizedIds.has(message.author.id);
 
-            if (!isOwner && !isAuthorized) {
+            if (!isOwner && !(isAuthorized && isAdmin)) {
+
+                console.log("Royal authorization denied:", {
+                    userId: message.author.id,
+                    isAuthorized,
+                    isAdmin
+                });
+
                 return reply(
                     "You are not authorized to use this command."
                 );
@@ -106,6 +120,7 @@ function registerRoyal(client) {
 
                 const saved = lockedChannels.get(guild.id);
 
+                // LOCKDOWN
                 if (locking) {
 
                     const channels = await guild.channels.fetch();
@@ -119,10 +134,14 @@ function registerRoyal(client) {
                             ChannelType.GuildAnnouncement
                         ].includes(channel.type)) continue;
 
+                        // KEEP LOG AND COMMAND CHANNELS AVAILABLE
                         if (
-                            channel.id === String(config.logChannelId)
-                            || channel.id === message.channel.id
-                        ) continue;
+                            channel.id === String(config.logChannelId) ||
+                            channel.id === message.channel.id
+                        ) {
+                            skipped++;
+                            continue;
+                        }
 
                         if (!channel.permissionsFor(bot)?.has(
                             PermissionFlagsBits.ManageRoles
@@ -170,8 +189,12 @@ function registerRoyal(client) {
 
                             await channel.permissionOverwrites.edit(
                                 guild.roles.everyone,
-                                { SendMessages: false },
-                                { reason: "Royal emergency protection" }
+                                {
+                                    SendMessages: false
+                                },
+                                {
+                                    reason: "Royal emergency protection"
+                                }
                             );
 
                             completed++;
@@ -189,6 +212,8 @@ function registerRoyal(client) {
 
                 } else {
 
+                    // RESTORE ORIGINAL PERMISSIONS
+
                     for (const [id, previous] of [...saved]) {
 
                         try {
@@ -203,8 +228,12 @@ function registerRoyal(client) {
 
                             await channel.permissionOverwrites.edit(
                                 guild.roles.everyone,
-                                { SendMessages: previous },
-                                { reason: "Royal protection ended" }
+                                {
+                                    SendMessages: previous
+                                },
+                                {
+                                    reason: "Royal protection ended"
+                                }
                             );
 
                             saved.delete(id);
@@ -230,11 +259,7 @@ function registerRoyal(client) {
                     }
                 }
 
-                const lockedEmoji =
-                    "<:locked:1575609857858609192>";
-
-                const unlockedEmoji =
-                    "<:unlocked:575609944303079434>";
+                // RESULT EMBED
 
                 const title = failed > 0
                     ? "Royal Protection — Partial Completion"
@@ -266,7 +291,7 @@ function registerRoyal(client) {
                             inline: true
                         },
                         {
-                            name: "Authorized User",
+                            name: "Executed By",
                             value: `<@${message.author.id}>`
                         }
                     )
@@ -281,6 +306,8 @@ function registerRoyal(client) {
                         text: "Royal Protection System"
                     })
                     .setTimestamp();
+
+                // SECURITY LOGS
 
                 try {
 
@@ -308,10 +335,7 @@ function registerRoyal(client) {
 
             } catch (error) {
 
-                console.error(
-                    "Royal protection error:",
-                    error
-                );
+                console.error("Royal protection error:", error);
 
                 await reply(
                     "Royal Protection encountered an error. " +
@@ -358,7 +382,7 @@ function registerRoyal(client) {
                 )
                 .setColor(0xD4AF37)
                 .setFooter({
-                    text: "Royal Protection System • Staff Commands"
+                    text: "Royal Protection System • Staff commands"
                 })
                 .setTimestamp();
 
@@ -377,3 +401,4 @@ function registerRoyal(client) {
 }
 
 module.exports = { registerRoyal };
+
